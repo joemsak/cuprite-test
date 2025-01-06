@@ -1,0 +1,51 @@
+volumes:
+  volume_name:
+    name: cuprite_test
+
+services:
+  app:
+    environment:
+      CHROME_URL: ${CHROME_URL:-http://chrome:3333}
+      APP_HOST: ${APP_HOST:-app.mysite.local}
+    build: .
+    working_dir: /r
+    command: bundle exec rails s
+    volumes:
+      - .:/r
+      - ~/.npm:/root/.npm
+      - .bundle:/usr/local/bundle
+    ports:
+      - 3001:3001
+      - 3002:3002
+    depends_on:
+      - db
+    networks:
+      default:
+        aliases:
+          - app.mysite.local
+
+  db:
+   image: postgres
+   volumes:
+     - ./tmp/db:/var/lib/postgresql/data
+   environment:
+     POSTGRES_USER: postgresql
+     POSTGRES_PASSWORD: password
+
+  chrome:
+    # Currently, Apple M1 is only supported in unnumbered "latest" versions.
+    # See https://github.com/browserless/chrome/issues/1393
+    image: browserless/chrome:latest
+    ports:
+      - "3333:3333"
+    # Mount application source code to support file uploading
+    # (otherwise Chrome won't be able to find files).
+    # NOTE: Make sure you use absolute paths in `#attach_file`.
+    volumes:
+      - .:/app:cached
+    environment:
+      # By default, it uses 3000, which is typically used by Rails.
+      PORT: 3333
+      # Set connection timeout to avoid timeout exception during debugging
+      # https://docs.browserless.io/docs/docker.html#connection-timeout
+      CONNECTION_TIMEOUT: 600000
